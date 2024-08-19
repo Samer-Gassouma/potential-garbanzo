@@ -1,27 +1,49 @@
-"use client"
+"use client";
 import { useEffect, useState } from 'react';
-import io from 'socket.io-client';
 import { useRouter } from 'next/navigation';
-
-const socket = io('http://localhost:3001');
 
 export default function Auth() {
     const [qrCode, setQrCode] = useState('');
     const router = useRouter();
 
     useEffect(() => {
-        socket.on('qr', (qr) => {
-            setQrCode(qr);
-        });
+        // Fetch the user's public IP address to use as session ID
+        fetch('http://localhost:3001/get-ip')
+            .then(response => response.json())
+            .then(data => {
+                const sessionId = data.ip;
 
-        socket.on('authenticated', () => {
-            router.push('/'); // Redirect to the main chat page
-        });
+                // Fetch the QR code for the session
+                fetch(`http://localhost:3001/qr/${sessionId}`)
+                    .then(response => {
+                        if (response.ok) {
+                            return response.text(); // QR code URL
+                        } else {
+                            throw new Error('Failed to get QR code');
+                        }
+                    })
+                    .then(qr => {
+                        setQrCode(qr);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching QR code:', error);
+                    });
 
-        return () => {
-            socket.off('qr');
-            socket.off('authenticated');
-        };
+                // Poll the backend to check if the session is authenticated
+                const checkAuthInterval = setInterval(() => {
+                    fetch(`http://localhost:3001/ready/${sessionId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.ready) {
+                                clearInterval(checkAuthInterval);
+                                router.push('/'); // Redirect to the main chat page
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking session readiness:', error);
+                        });
+                }, 2000);
+            });
     }, [router]);
 
     return (
@@ -30,7 +52,7 @@ export default function Auth() {
                 <h1 className="text-2xl font-bold mb-4">Scan the QR Code</h1>
                 {qrCode ? (
                     <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`}
+                        src={qrCode}
                         alt="QR Code"
                         className="mx-auto"
                     />

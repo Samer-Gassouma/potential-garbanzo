@@ -10,7 +10,7 @@ export default function UserDetails({ user }) {
                 <div className="ml-4">
                     <h2 className="text-xl font-semibold">{user.name}</h2>
                     <p className="text-sm text-green-500 font-semibold">
-                        {user.phone}</p>
+                        {user.number}</p>
                 </div>
             </div>
             <div className="mb-4 flex items-center justify-center">

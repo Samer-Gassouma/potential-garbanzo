@@ -1,44 +1,70 @@
-"use client"
+"use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import io from 'socket.io-client';
 import Chats from '@/components/Chats';
-import Contacts from '@/components/Contacts';
 import Chat from '@/components/Chat';
 
-const socket = io('http://localhost:3001');
-
 export default function Home() {
+    const router = useRouter();
+    const [selectedChatId, setSelectedChatId] = useState(null);
+    const [messages, setMessages] = useState([]);
 
-  const router = useRouter();
-  const [messages, setMessages] = useState([]);
-  const [selectedChatId, setSelectedChatId] = useState(null);
+    useEffect(() => {
+        // Fetch the user's public IP address to use as session ID
+        fetch('http://localhost:3001/get-ip')
+            .then(response => response.json())
+            .then(data => {
+                const sessionId = data.ip;
 
-  useEffect(() => {
-    
-    fetch('http://localhost:3001/isAuthenticated')
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.authenticated) {
-          router.push('/auth');
-        }
-      });
+                // Check if the session is authenticated
+                fetch(`http://localhost:3001/ready/${sessionId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.ready) {
+                            router.push('/auth'); // Redirect to the auth page
+                        }
+                    });
 
-    socket.on('message', (message) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
-    });
+                // Fetch initial chat messages when a chat is selected
+                if (selectedChatId) {
+                    fetch(`http://localhost:3001/chat/${sessionId}?id=${selectedChatId}`)
+                        .then(response => response.json())
+                        .then(data => setMessages(data.messages))
+                        .catch(error => console.error('Error fetching messages:', error));
+                }
+            });
+    }, [router, selectedChatId]);
 
-    return () => {
-      socket.off('message');
+    const sendMessage = (chatId, message) => {
+        fetch(`http://localhost:3001/send/${sessionId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: chatId, message }),
+        })
+            .then(response => response.ok)
+            .then(() => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { body: message, fromMe: true, timestamp: Date.now() },
+                ]);
+            })
+            .catch(error => console.error('Error sending message:', error));
     };
-  }, [router]);
 
-  return (
-    <div className="flex h-screen bg-gray-100 border border-gray-300 text-gray-800">
-      <Chats onSelectChat={setSelectedChatId} />
-      {selectedChatId ? <Chat chatId={selectedChatId} /> : <div>Select a chat to view messages</div>}
-
-    
-    </div>
-  );
+    return (
+        <div className="flex h-screen bg-gray-100 border border-gray-300 text-gray-800">
+            <Chats onSelectChat={setSelectedChatId} />
+            {selectedChatId ? (
+                <Chat
+                    chatId={selectedChatId}
+                    messages={messages}
+                    onSendMessage={sendMessage}
+                />
+            ) : (
+                <div>Select a chat to view messages</div>
+            )}
+        </div>
+    );
 }
