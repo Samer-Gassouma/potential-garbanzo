@@ -63,7 +63,9 @@ export default function Home() {
                     onSendMessage={sendMessage}
                 />
             ) : (
-                <div>Select a chat to view messages</div>
+                <div
+                    className="flex items-center justify-center w-full h-full"
+                >Select a chat to view messages</div>
             )}
         </div>
     );

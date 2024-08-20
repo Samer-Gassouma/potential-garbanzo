@@ -34,7 +34,6 @@ export default function Chat({ chatId }) {
             console.error('Error fetching user:', error);
         }
     };
-    console.log(user);
     const fetchMessages = async () => {
         try {
             const response = await fetch('http://localhost:3001/get-ip');
