@@ -80,7 +80,12 @@ export default function Chats({ onSelectChat }) {
             const response = await fetch('http://localhost:3001/get-ip');
             const { ip: sessionId } = await response.json();
 
-            const logoutResponse = await fetch(`http://localhost:3001/logout/${sessionId}`);
+            const logoutResponse = await fetch(`http://localhost:3001/logout/${sessionId}` , {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
             const logoutData = await logoutResponse.json();
 
             if (logoutData.success) {
@@ -89,6 +94,7 @@ export default function Chats({ onSelectChat }) {
 
         } catch (error) {
             console.error('Error logging out:', error);
+            router.push('/auth');
         }
     }
 
